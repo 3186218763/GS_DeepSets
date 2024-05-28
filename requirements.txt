@@ -1,0 +1,15 @@
+numpy~=1.26.4
+pandas~=2.2.2
+pymap3d~=3.1.0
+matplotlib~=3.8.4
+scipy~=1.13.0
+tqdm~=4.66.2
+scipy
+torch~=2.3.0+cu118
+scikit-learn~=1.4.2
+python-dotenv~=1.0.1
+georinex
+geopy~=2.4.1
+joblib~=1.4.2
+PyYAML~=6.0.1
+Jinja2~=3.1.3
