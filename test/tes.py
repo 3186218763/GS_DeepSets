@@ -1,37 +1,44 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 
-class PhiTransformer(nn.Module):
-    def __init__(self, input_size: int = 6, output_size: int = 512, num_heads: int = 8, num_layers: int = 2,
-                 hidden_dim: int = 256):
-        super(PhiTransformer, self).__init__()
+class MultiLayerFC(nn.Module):
+    def __init__(self, input_size, hidden_sizes, output_size):
+        super(MultiLayerFC, self).__init__()
+        layers = []
 
-        self.input_proj = nn.Linear(input_size, hidden_dim)
+        # 输入层到第一个隐藏层
+        layers.append(nn.Linear(input_size, hidden_sizes[0]))
+        layers.append(nn.ReLU())
 
-        encoder_layer = nn.TransformerEncoderLayer(d_model=hidden_dim, nhead=num_heads, batch_first=True)
-        self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
+        # 隐藏层之间
+        for i in range(len(hidden_sizes) - 1):
+            layers.append(nn.Linear(hidden_sizes[i], hidden_sizes[i + 1]))
+            layers.append(nn.ReLU())
 
-        self.output_proj = nn.Linear(hidden_dim, output_size)
+        # 最后一层
+        layers.append(nn.Linear(hidden_sizes[-1], output_size))
 
-        self.norm = nn.BatchNorm1d(output_size)
+        self.fc = nn.Sequential(*layers)
 
     def forward(self, x):
-        x = self.input_proj(x)  # shape: (64, 32, hidden_dim)
-        x = self.transformer_encoder(x)  # shape: (64, 32, hidden_dim)
-        x = self.output_proj(x)  # shape: (64, 32, 512)
-        x = self.norm(x.permute(0, 2, 1)).permute(0, 2, 1)  # shape: (64, 32, 512)
-
+        x = x.view(x.size(0), -1)  # 将输入展平
+        x = self.fc(x)
         return x
 
 
-# 创建Transformer的PhiTransformer
-phi_transformer = PhiTransformer()
+# 输入形状示例
+batch_size = 64
+input_channels = 4
+input_rows = 32
+output_size = 256
+hidden_sizes = [512, 256, 128, 64]
+final_output_size = 3
 
-# 测试示例输入
-input_data = torch.randn(64, 32, 6)
-output_transformer = phi_transformer(input_data)
+model = MultiLayerFC(input_rows * output_size * input_channels, hidden_sizes, final_output_size)
+input_data = torch.randn(batch_size, input_rows, output_size, input_channels)
 
-print("Output shape for Transformer:", output_transformer.shape)
+
+
+
 

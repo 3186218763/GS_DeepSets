@@ -1,46 +1,41 @@
-import torch.nn as nn
 import torch
+import torch.nn as nn
+import numpy as np
 
-class PhiConv(nn.Module):
-    def __init__(self, kernel_size: int, stride: int, input_size: int = 6, output_size: int = 512, num_layers: int = 5):
-        super(PhiConv, self).__init__()
 
-        # 创建卷积层和归一化层
-        conv_layers = []
-        for _ in range(num_layers):
-            conv_layers.append(
-                nn.Conv1d(in_channels=input_size, out_channels=output_size, kernel_size=kernel_size, stride=stride))
-            conv_layers.append(nn.ReLU())
-            conv_layers.append(nn.BatchNorm1d(output_size))
-            input_size = output_size  # 更新输入通道数
-
-        self.conv = nn.Sequential(*conv_layers)
+class PhiAdditiveAttention(nn.Module):
+    def __init__(self, input_size, output_size, hidden_dim):
+        super(PhiAdditiveAttention, self).__init__()
+        self.hidden_dim = hidden_dim
+        self.Q = nn.Linear(input_size, hidden_dim)
+        self.K = nn.Linear(input_size, hidden_dim)
+        self.V = nn.Linear(input_size, hidden_dim)
+        self.output_proj = nn.Linear(hidden_dim, output_size)
 
     def forward(self, x):
-        x = x.permute(0, 2, 1)  # 将通道维度移动到最后
-        x = self.conv(x)
-        return x.permute(0, 2, 1)  # 将通道维度移动回去
+        batch_size, num_groups, input_dim = x.shape  # (64, 32, 6)
 
-# 创建1x1卷积的PhiConv
-phi_conv_1x1 = PhiConv(kernel_size=1, stride=1)
+        Q = self.Q(x)  # shape: (batch_size, num_groups, hidden_dim)
+        K = self.K(x)  # shape: (batch_size, num_groups, hidden_dim)
+        V = self.V(x)  # shape: (batch_size, num_groups, hidden_dim)
 
-# 创建3x3卷积的PhiConv（步长为1）
-phi_conv_3x3_1 = PhiConv(kernel_size=3, stride=1)
+        # 计算注意力权重
+        attention_weights = torch.softmax(torch.bmm(Q, K.transpose(1, 2)) / np.sqrt(self.hidden_dim),
+                                          dim=2)  # shape: (batch_size, num_groups, num_groups)
 
-# 创建3x3卷积的PhiConv（步长为2）
-phi_conv_3x3_2 = PhiConv(kernel_size=3, stride=2)
+        # 计算上下文向量
+        context_vector = torch.bmm(attention_weights, V)  # shape: (batch_size, num_groups, hidden_dim)
 
-# 测试示例输入
-input_data = torch.randn(64, 32, 6)
-output_1x1 = phi_conv_1x1(input_data)
-output_3x3_1 = phi_conv_3x3_1(input_data)
-output_3x3_2 = phi_conv_3x3_2(input_data)
+        output = self.output_proj(context_vector)  # shape: (batch_size, num_groups, output_size)
 
-print("Output shape for 1x1 conv:", output_1x1.shape)
-print("Output shape for 3x3 conv with stride 1:", output_3x3_1.shape)
-print("Output shape for 3x3 conv with stride 2:", output_3x3_2.shape)
+        return output
 
 
+if __name__ == '__main__':
+    phi_mlp = PhiAdditiveAttention(input_size=6, output_size=512, hidden_dim=128)
+    size = (64, 32, 6)
 
-
-
+    # 创建一个shape是size的tensor
+    tensor = torch.rand(size, dtype=torch.float32)
+    out = phi_mlp(tensor)
+    print(out.shape)

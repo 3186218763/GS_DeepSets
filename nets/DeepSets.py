@@ -2,6 +2,18 @@ import torch
 import torch.nn as nn
 from utools.Net_Tools import Integrated_Net
 from utools.Mylog import logger
+import numpy as np
+
+torch.backends.cudnn.enabled = False
+
+
+class PhiDotProduct(nn.Module):
+    def __init__(self, input_size, output_size):
+        super(PhiDotProduct, self).__init__()
+        self.weight = nn.Parameter(torch.randn(input_size, output_size))
+
+    def forward(self, x):
+        return torch.matmul(x, self.weight)
 
 
 class PhiTransformer(nn.Module):
@@ -28,26 +40,16 @@ class PhiTransformer(nn.Module):
 
 
 class PhiConv1x1(nn.Module):
-    def __init__(self, output_size: int, input_size: int = 6, num_layers: int = 5):
+    def __init__(self, input_size, output_size):
         super(PhiConv1x1, self).__init__()
-
-        # 创建卷积层和归一化层
-        conv_layers = []
-        for _ in range(num_layers):
-            conv_layers.extend([
-                nn.Conv1d(in_channels=input_size, out_channels=output_size, kernel_size=1),
-                nn.ReLU(),
-                nn.BatchNorm1d(output_size)
-            ])
-            input_size = output_size  # 更新输入通道数
-
-        self.conv = nn.Sequential(*conv_layers)
+        self.conv = nn.Conv1d(input_size, output_size, kernel_size=1)
+        self.norm = nn.BatchNorm1d(output_size)
 
     def forward(self, x):
-        x = x.permute(0, 2, 1)  # 将通道维度移动到最后
+        x = x.permute(0, 2, 1)  # 变换形状以适应卷积层 (batch_size, channels, seq_len)
         x = self.conv(x)
-        x = x.permute(0, 2, 1)  # 将通道维度移动回来
-        return x
+        x = self.norm(x)
+        return x.permute(0, 2, 1)  # 变回原来的形状
 
 
 class PhiFC(nn.Module):
@@ -73,26 +75,80 @@ class PhiFC(nn.Module):
         return x
 
 
-class PhiConv3x3(nn.Module):
-    def __init__(self, output_size: int, kernel_size: int = 3, input_size: int = 6, num_layers: int = 5):
-        super(PhiConv3x3, self).__init__()
+class PhiPool(nn.Module):
+    def __init__(self, output_size: int, input_size: int = 6, pool_type: str = 'avg', hidden_dim: int = 256):
+        super(PhiPool, self).__init__()
 
-        # 创建卷积层和归一化层
-        conv_layers = []
-        for _ in range(num_layers):
-            conv_layers.append(
-                nn.Conv1d(in_channels=input_size, out_channels=output_size, kernel_size=kernel_size, padding=1))
-            conv_layers.append(nn.ReLU())
-            conv_layers.append(nn.BatchNorm1d(output_size))
-            input_size = output_size  # 更新输入通道数
+        self.input_proj = nn.Linear(input_size, hidden_dim)
 
-        self.conv = nn.Sequential(*conv_layers)
+        if pool_type == 'avg':
+            self.pool = nn.AdaptiveAvgPool1d(1)
+        elif pool_type == 'max':
+            self.pool = nn.AdaptiveMaxPool1d(1)
+        else:
+            raise ValueError("pool_type must be either 'avg' or 'max'")
+
+        self.output_proj = nn.Linear(hidden_dim, output_size)
+        self.norm = nn.BatchNorm1d(output_size)
 
     def forward(self, x):
-        x = x.permute(0, 2, 1)  # 将通道维度移动到最后
-        x = self.conv(x)
-        x = x.permute(0, 2, 1)  # 将通道维度移动回来
+        batch_size, num_groups, channels = x.shape  # (batch_size, 32, input_size)
+
+        x = x.view(batch_size * num_groups, channels)  # (batch_size * 32, input_size)
+        x = self.input_proj(x)  # (batch_size * 32, hidden_dim)
+
+        x = x.unsqueeze(-1)  # (batch_size * 32, hidden_dim, 1)
+        x = self.pool(x)  # (batch_size * 32, hidden_dim, 1)
+        x = x.squeeze(-1)  # (batch_size * 32, hidden_dim)
+
+        x = self.output_proj(x)  # (batch_size * 32, output_size)
+        x = self.norm(x)  # (batch_size * 32, output_size)
+
+        x = x.view(batch_size, num_groups, -1)  # shape: (batch_size, 32, output_size)
+
         return x
+
+
+class PhiPointwiseConv(nn.Module):
+    def __init__(self, input_size, output_size):
+        super(PhiPointwiseConv, self).__init__()
+        self.conv1x1 = nn.Conv1d(in_channels=input_size, out_channels=output_size, kernel_size=1)
+        self.norm = nn.BatchNorm1d(output_size)
+
+    def forward(self, x):
+        x = x.permute(0, 2, 1)  # (batch_size, num_groups, input_size) -> (batch_size, input_size, num_groups)
+        x = self.conv1x1(x)  # (batch_size, output_size, num_groups)
+        x = self.norm(x)  # (batch_size, output_size, num_groups)
+        x = x.permute(0, 2, 1)  # (batch_size, output_size, num_groups) -> (batch_size, num_groups, output_size)
+        return x
+
+
+class PhiAdditiveAttention(nn.Module):
+    def __init__(self, input_size, output_size, hidden_dim):
+        super(PhiAdditiveAttention, self).__init__()
+        self.hidden_dim = hidden_dim
+        self.Q = nn.Linear(input_size, hidden_dim)
+        self.K = nn.Linear(input_size, hidden_dim)
+        self.V = nn.Linear(input_size, hidden_dim)
+        self.output_proj = nn.Linear(hidden_dim, output_size)
+
+    def forward(self, x):
+        batch_size, num_groups, input_dim = x.shape  # (64, 32, 6)
+
+        Q = self.Q(x)  # shape: (batch_size, num_groups, hidden_dim)
+        K = self.K(x)  # shape: (batch_size, num_groups, hidden_dim)
+        V = self.V(x)  # shape: (batch_size, num_groups, hidden_dim)
+
+        # 计算注意力权重
+        attention_weights = torch.softmax(torch.bmm(Q, K.transpose(1, 2)) / np.sqrt(self.hidden_dim),
+                                          dim=2)  # shape: (batch_size, num_groups, num_groups)
+
+        # 计算上下文向量
+        context_vector = torch.bmm(attention_weights, V)  # shape: (batch_size, num_groups, hidden_dim)
+
+        output = self.output_proj(context_vector)  # shape: (batch_size, num_groups, output_size)
+
+        return output
 
 
 class SmallPhi(nn.Module):
@@ -105,25 +161,35 @@ class SmallPhi(nn.Module):
 
         self.phi_fc = PhiFC(input_size=input_size, output_size=hidden_size)
         self.phi_conv1x1 = PhiConv1x1(input_size=input_size, output_size=hidden_size)
-        self.phi_conv3x3 = PhiConv3x3(input_size=input_size, output_size=hidden_size)
+        self.phi_maxPool = PhiPool(input_size=input_size, output_size=hidden_size, pool_type='max')
+        self.phi_avgPool = PhiPool(input_size=input_size, output_size=hidden_size, pool_type='avg')
+        self.phi_addAttention = PhiAdditiveAttention(input_size=input_size, output_size=hidden_size, hidden_dim=128)
+        self.phi_dot = PhiDotProduct(input_size=input_size, output_size=hidden_size)
         self.phi_transformer = PhiTransformer(input_size=input_size, output_size=hidden_size)
+        self.phi_pointWiseConv = PhiPointwiseConv(input_size=input_size, output_size=hidden_size)
 
     def forward(self, x):
         x_fc = self.phi_fc(x)
         x_conv1x1 = self.phi_conv1x1(x)
-        x_conv3x3 = self.phi_conv3x3(x)
+        x_maxPool = self.phi_maxPool(x)
+        x_avgPool = self.phi_avgPool(x)
+        x_addAttention = self.phi_addAttention(x)
+        x_dot = self.phi_dot(x)
         x_transform = self.phi_transformer(x)
-        out = torch.cat((x_fc.unsqueeze(3), x_conv1x1.unsqueeze(3), x_conv3x3.unsqueeze(3), x_transform.unsqueeze(3)),
-                        dim=3)
+        x_pointWiseConv = self.phi_pointWiseConv(x)
+        out = torch.cat((x_fc.unsqueeze(3), x_conv1x1.unsqueeze(3), x_maxPool.unsqueeze(3),
+                         x_avgPool.unsqueeze(3), x_addAttention.unsqueeze(3), x_dot.unsqueeze(3),
+                         x_transform.unsqueeze(3), x_pointWiseConv.unsqueeze(3)), dim=3)
+
         return out
 
 
 class SmallRho(nn.Module):
     """
-    This is the Rho function using self-attention for each channel separately, ensuring permutation invariance.
+    把高维空间的特征映射出来
     """
 
-    def __init__(self, d_model, nhead, num_encoder_layers, dim_feedforward, output_size, output_channels=4,
+    def __init__(self, d_model, nhead, num_encoder_layers, dim_feedforward, output_size, output_channels=9,
                  deepsets_only=False):
         super(SmallRho, self).__init__()
         self.deepsets_only = deepsets_only
@@ -136,13 +202,10 @@ class SmallRho(nn.Module):
     def forward(self, x):
         batch_size, num_groups, channels, seq_len = x.shape  # (64, 32, 512, 4)
 
-        # Ensure the correct input shape for Transformer Encoder
         x = x.permute(0, 1, 3, 2).reshape(batch_size * num_groups, seq_len, channels)  # (64*32, 4, 512)
 
-        # Apply TransformerEncoder
         x = self.transformer_encoder(x)  # (64*32, 4, 512)
 
-        # Ensuring permutation invariance by mean aggregation
         x = x.mean(dim=1)  # (64*32, 512)
         x = x.view(batch_size, num_groups, -1)  # (64, 32, 512)
 
@@ -152,6 +215,8 @@ class SmallRho(nn.Module):
         else:
             x = self.fc(x)  # (64, 32, output_size)
             x = x.unsqueeze(-1).expand(-1, -1, -1, self.output_channels)  # (64, 32, output_size, output_channels)
+            # 确保输出形状为 (batch, 32, output_size, channels)
+            x = x.permute(0, 1, 3, 2)  # 将最后两个维度交换位置
 
         return x
 
@@ -162,8 +227,8 @@ class DeepSetModel(nn.Module):
         self.Debug = Debug
 
         phi = SmallPhi(input_size=input_size, hidden_size=hidden_size)
-        rho = SmallRho(d_model=hidden_size, nhead=8, num_encoder_layers=6, dim_feedforward=2048,
-                       output_size=output_size,output_channels=4,
+        rho = SmallRho(d_model=hidden_size, nhead=10, num_encoder_layers=24, dim_feedforward=2048,
+                       output_size=output_size, output_channels=8,
                        deepsets_only=False)
         self.net = Integrated_Net(phi, rho)
 

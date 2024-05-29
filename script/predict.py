@@ -39,7 +39,7 @@ def Predict(pre_dir, model_name, model_parameter_dir, pad_columns=None, batch_si
     if model_name == "DeepSet_Only":
         net = DeepSet_Only(input_size=6)
     elif model_name == "DeepSet_Dense":
-        net = DeepSet_Dense(input_size=6)
+        net = DeepSet_Dense(,
     elif model_name == "DeepSet_ResNet":
         net = DeepSet_ResNet(input_size=6)
     elif model_name == "RNN":

@@ -1,11 +1,8 @@
-
-
+import pandas as pd
 
 if __name__ == '__main__':
-    print("d")
+    df = pd.read_csv('../data/base_station/csv/combined.csv', low_memory=False)
 
-    # 读取 CSV 文件
-    # df = pd.read_csv('../data/base_station/csv/output.csv')
-
+    print(df.head)
     # 打印列名
-    # print(df.columns)
+    print(df.columns)

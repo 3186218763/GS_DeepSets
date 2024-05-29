@@ -71,11 +71,8 @@ def Train_Model(base_dir, model_config_name, model_args_path=None):
                            Debug=configs.Debug)
 
     elif configs.model_name == "DeepSet_Dense":
-        net = DeepSet_Dense(input_size=configs.features_len,
-                            output_size=configs.output_size,
-                            deepset_hidden_size=configs.deepset_hidden_size,
-                            deepset_out_size=configs.deepset_out_size,
-                            Debug=configs.Debug)
+        net = DeepSet_Dense(deepset_hidden_size=configs.deepset_hidden_size, deepset_out_size=configs.deepset_out_size,
+                            output_size=configs.output_size, Debug=configs.Debug)
 
     elif configs.model_name == "DeepSet_ResNet":
         net = DeepSet_ResNet(input_size=configs.features_len,
@@ -150,5 +147,5 @@ def Train_Model(base_dir, model_config_name, model_args_path=None):
 
 if __name__ == '__main__':
     base_dir = "../data/train"
-    model_config_name = "DeepSet_ResNet.yaml"
+    model_config_name = "DeepSet_Only.yaml"
     Train_Model(base_dir, model_config_name)
