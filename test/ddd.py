@@ -1,41 +1,52 @@
 import torch
 import torch.nn as nn
-import numpy as np
 
+class SmallRho(nn.Module):
+    """
+    把高维空间的特征映射出来
+    """
 
-class PhiAdditiveAttention(nn.Module):
-    def __init__(self, input_size, output_size, hidden_dim):
-        super(PhiAdditiveAttention, self).__init__()
-        self.hidden_dim = hidden_dim
-        self.Q = nn.Linear(input_size, hidden_dim)
-        self.K = nn.Linear(input_size, hidden_dim)
-        self.V = nn.Linear(input_size, hidden_dim)
-        self.output_proj = nn.Linear(hidden_dim, output_size)
+    def __init__(self, d_model, nhead, num_encoder_layers, dim_feedforward, output_size, output_channels=9,
+                 deepsets_only=False):
+        super(SmallRho, self).__init__()
+        self.deepsets_only = deepsets_only
+        self.encoder_layer = nn.TransformerEncoderLayer(d_model=d_model, nhead=nhead, dim_feedforward=dim_feedforward,
+                                                        batch_first=True)
+        self.transformer_encoder = nn.TransformerEncoder(self.encoder_layer, num_layers=num_encoder_layers)
+        self.fc = nn.Linear(d_model, output_size)
+        self.output_channels = output_channels
 
     def forward(self, x):
-        batch_size, num_groups, input_dim = x.shape  # (64, 32, 6)
+        batch_size, num_groups, channels, seq_len = x.shape  # (batch_size, num_groups, channels, seq_len)
 
-        Q = self.Q(x)  # shape: (batch_size, num_groups, hidden_dim)
-        K = self.K(x)  # shape: (batch_size, num_groups, hidden_dim)
-        V = self.V(x)  # shape: (batch_size, num_groups, hidden_dim)
+        x = x.permute(0, 1, 3, 2).reshape(batch_size * num_groups, seq_len, channels)  # (batch_size*num_groups, seq_len, channels)
 
-        # 计算注意力权重
-        attention_weights = torch.softmax(torch.bmm(Q, K.transpose(1, 2)) / np.sqrt(self.hidden_dim),
-                                          dim=2)  # shape: (batch_size, num_groups, num_groups)
+        x = self.transformer_encoder(x)  # (batch_size*num_groups, seq_len, channels)
 
-        # 计算上下文向量
-        context_vector = torch.bmm(attention_weights, V)  # shape: (batch_size, num_groups, hidden_dim)
+        x = x.mean(dim=1)  # (batch_size*num_groups, channels)
+        x = x.view(batch_size, num_groups, -1)  # (batch_size, num_groups, channels)
 
-        output = self.output_proj(context_vector)  # shape: (batch_size, num_groups, output_size)
+        if self.deepsets_only:
+            x = x.sum(dim=1)  # (batch_size, channels)
+            x = self.fc(x)  # (batch_size, output_size)
+        else:
+            x = self.fc(x)  # (batch_size, num_groups, output_size)
+            x = x.unsqueeze(-1).expand(-1, -1, -1, self.output_channels)  # (batch_size, num_groups, output_size, output_channels)
+            x = x.permute(0, 1, 3, 2)  # (batch_size, num_groups, output_channels, output_size)
 
-        return output
+        return x
+
+# 创建一个测试输入张量
+batch_size = 64
+num_groups = 32
+output_size = 512
+channels = 8
+input_tensor = torch.randn(batch_size, num_groups, output_size, channels)
 
 
-if __name__ == '__main__':
-    phi_mlp = PhiAdditiveAttention(input_size=6, output_size=512, hidden_dim=128)
-    size = (64, 32, 6)
 
-    # 创建一个shape是size的tensor
-    tensor = torch.rand(size, dtype=torch.float32)
-    out = phi_mlp(tensor)
-    print(out.shape)
+# 前向传播
+output = model(input_tensor)
+print("Output shape:", output.shape)
+
+

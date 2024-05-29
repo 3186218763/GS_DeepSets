@@ -156,7 +156,7 @@ class SmallPhi(nn.Module):
     这个是最终的Phi函数
     """
 
-    def __init__(self, input_size, hidden_size=512):
+    def __init__(self, input_size, hidden_size):
         super(SmallPhi, self).__init__()
 
         self.phi_fc = PhiFC(input_size=input_size, output_size=hidden_size)
@@ -189,7 +189,7 @@ class SmallRho(nn.Module):
     把高维空间的特征映射出来
     """
 
-    def __init__(self, d_model, nhead, num_encoder_layers, dim_feedforward, output_size, output_channels=9,
+    def __init__(self, d_model, nhead, num_encoder_layers, dim_feedforward, output_size, output_channels=8,
                  deepsets_only=False):
         super(SmallRho, self).__init__()
         self.deepsets_only = deepsets_only
@@ -222,14 +222,13 @@ class SmallRho(nn.Module):
 
 
 class DeepSetModel(nn.Module):
-    def __init__(self, input_size: int = 6, output_size: int = 256, hidden_size: int = 64, Debug=False):
+    def __init__(self, hidden_size: int, output_size: int, Debug=False):
         super().__init__()
         self.Debug = Debug
 
-        phi = SmallPhi(input_size=input_size, hidden_size=hidden_size)
-        rho = SmallRho(d_model=hidden_size, nhead=10, num_encoder_layers=24, dim_feedforward=2048,
-                       output_size=output_size, output_channels=8,
-                       deepsets_only=False)
+        phi = SmallPhi(input_size=6, hidden_size=hidden_size)
+        rho = SmallRho(d_model=hidden_size, nhead=8, num_encoder_layers=4, dim_feedforward=2048,
+                       output_size=output_size, output_channels=8, deepsets_only=False)
         self.net = Integrated_Net(phi, rho)
 
     def forward(self, x, pad_mask=None):
@@ -275,17 +274,12 @@ if __name__ == '__main__':
     # 将这些位置的值设置为 0，表示这些位置需要被掩码
     mask[:, :2, :3] = 0
 
-    # print(f"tensor的shape: {tensor.shape} tensor:{tensor}")
-
-    # print(f"tensor的shape: {tensor.shape} tensor:{tensor}")
-
-    # 如果需要Debug，将Debug设置为True。在logs/debug.log文件夹下查看日志
     # deepsets单独使用
-    model1 = DeepSet_Only(input_size=6)
-    out = model1(tensor, pad_mask=mask)
-    print(f"DeepSet_Only的out的shape:{out.shape} ")
+    # model1 = DeepSet_Only(input_size=6)
+    # out = model1(tensor, pad_mask=mask)
+    # print(f"DeepSet_Only的out的shape:{out.shape} ")
 
-    # deepsets和其他net混合使用的情况
-    model2 = DeepSetModel(input_size=6, output_size=256)
-    out = model2(tensor, pad_mask=mask)
-    print(f"DeepSetModel的out的shape:{out.shape} ")
+    # deepset混合使用
+    net = DeepSetModel(hidden_size=1024, output_size=2048)
+    out = net(tensor)
+    print(f"{out.shape}")
