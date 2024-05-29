@@ -120,21 +120,29 @@ class SmallPhi(nn.Module):
 
 class SmallRho(nn.Module):
     """
-    这个是Rho函数
+    This is the Rho function using self-attention for each channel separately, ensuring permutation invariance.
     """
 
-    def __init__(self, d_model, nhead, num_encoder_layers, dim_feedforward, output_size, deepsets_only=False):
+    def __init__(self, d_model, nhead, num_encoder_layers, dim_feedforward, output_size, output_channels=4,
+                 deepsets_only=False):
         super(SmallRho, self).__init__()
         self.deepsets_only = deepsets_only
         self.encoder_layer = nn.TransformerEncoderLayer(d_model=d_model, nhead=nhead, dim_feedforward=dim_feedforward,
                                                         batch_first=True)
         self.transformer_encoder = nn.TransformerEncoder(self.encoder_layer, num_layers=num_encoder_layers)
         self.fc = nn.Linear(d_model, output_size)
+        self.output_channels = output_channels
 
     def forward(self, x):
         batch_size, num_groups, channels, seq_len = x.shape  # (64, 32, 512, 4)
-        x = x.permute(0, 1, 3, 2).reshape(-1, seq_len, channels)  # (64*32, 4, 512)
+
+        # Ensure the correct input shape for Transformer Encoder
+        x = x.permute(0, 1, 3, 2).reshape(batch_size * num_groups, seq_len, channels)  # (64*32, 4, 512)
+
+        # Apply TransformerEncoder
         x = self.transformer_encoder(x)  # (64*32, 4, 512)
+
+        # Ensuring permutation invariance by mean aggregation
         x = x.mean(dim=1)  # (64*32, 512)
         x = x.view(batch_size, num_groups, -1)  # (64, 32, 512)
 
@@ -143,6 +151,7 @@ class SmallRho(nn.Module):
             x = self.fc(x)  # (64, 3)
         else:
             x = self.fc(x)  # (64, 32, output_size)
+            x = x.unsqueeze(-1).expand(-1, -1, -1, self.output_channels)  # (64, 32, output_size, output_channels)
 
         return x
 
@@ -154,7 +163,7 @@ class DeepSetModel(nn.Module):
 
         phi = SmallPhi(input_size=input_size, hidden_size=hidden_size)
         rho = SmallRho(d_model=hidden_size, nhead=8, num_encoder_layers=6, dim_feedforward=2048,
-                       output_size=output_size,
+                       output_size=output_size,output_channels=4,
                        deepsets_only=False)
         self.net = Integrated_Net(phi, rho)
 
@@ -209,9 +218,9 @@ if __name__ == '__main__':
     # deepsets单独使用
     model1 = DeepSet_Only(input_size=6)
     out = model1(tensor, pad_mask=mask)
-    print(f"DeepSet_Only的out的shape:{out.shape} out:{out}")
+    print(f"DeepSet_Only的out的shape:{out.shape} ")
 
     # deepsets和其他net混合使用的情况
     model2 = DeepSetModel(input_size=6, output_size=256)
     out = model2(tensor, pad_mask=mask)
-    print(f"DeepSetModel的out的shape:{out.shape} out:{out}")
+    print(f"DeepSetModel的out的shape:{out.shape} ")
