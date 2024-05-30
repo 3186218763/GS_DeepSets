@@ -19,6 +19,11 @@ from utools.ConfigManager import ConfigManager
 from datasets.load_dataset import collate_fn
 from datasets.gnss_dataset import Gnss_Dataset
 
+import numpy as np
+
+np.set_printoptions(suppress=True)
+torch.set_printoptions(sci_mode=False)
+
 
 def Train_Model(base_dir, model_config_name, model_args_path=None):
     """
@@ -50,7 +55,6 @@ def Train_Model(base_dir, model_config_name, model_args_path=None):
     for train_dir in train_dirs:
         dataset = Gnss_Dataset(train_dir, debug=configs.Debug, normalize=True, keep_init_real=configs.keep_init_real)
         dataset_list.append(dataset)
-        print("over")
 
     train_dataset = ConcatDataset(dataset_list)
     train_loader = DataLoader(train_dataset,
@@ -71,8 +75,9 @@ def Train_Model(base_dir, model_config_name, model_args_path=None):
                            Debug=configs.Debug)
 
     elif configs.model_name == "DeepSet_Dense":
-        net = DeepSet_Dense(deepset_hidden_size=configs.deepset_hidden_size, deepset_out_size=configs.deepset_out_size,
-                            output_size=configs.output_size, Debug=configs.Debug)
+        net = DeepSet_Dense(deepset_hidden_size=configs.deepset_hidden_size,
+                            deepset_out_size=configs.deepset_out_size,
+                            Debug=configs.Debug)
 
     elif configs.model_name == "DeepSet_ResNet":
         net = DeepSet_ResNet(input_size=configs.features_len,
@@ -124,8 +129,8 @@ def Train_Model(base_dir, model_config_name, model_args_path=None):
         losses.append(avg_loss)
         tqdm.write(f"Epoch [{epoch + 1}/{configs.epochs}], train_Loss: {avg_loss}")
 
-        # 每 10 个 epoch 结束后保存模型参数
-        # 每 10 个 epoch 结束后保存模型参数，并绘制损失曲线
+        # 每 5 个 epoch 结束后保存模型参数
+        # 每 5 个 epoch 结束后保存模型参数，并绘制损失曲线
         if (epoch + 1) % 5 == 0:
             # 创建文件夹路径并确保存在
             save_dir = os.path.join(root_save_dir, f"epoch_{epoch + 1}")
@@ -147,5 +152,5 @@ def Train_Model(base_dir, model_config_name, model_args_path=None):
 
 if __name__ == '__main__':
     base_dir = "../data/train"
-    model_config_name = "DeepSet_Only.yaml"
+    model_config_name = "DeepSet_Dense.yaml"
     Train_Model(base_dir, model_config_name)

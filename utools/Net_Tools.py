@@ -20,3 +20,24 @@ class Integrated_Net(nn.Module):
         out_model1 = self.model1(x)
         out = self.model2(out_model1)
         return out
+
+
+def check_phi_permutation_invariance(phi_function, input_size=6):
+    """
+    phi函数必须满足置换不变
+    """
+    batch_size, num_groups = 64, 32
+    input_tensor = torch.randn(batch_size, num_groups, input_size)
+    permuted_indices = torch.randperm(num_groups)
+    input_tensor_permuted = input_tensor[:, permuted_indices, :]
+
+    output_original = phi_function(input_tensor)
+    output_permuted = phi_function(input_tensor_permuted)
+
+    # 检查输出是否相同或非常接近
+    if torch.allclose(output_original, output_permuted, atol=1e-5):
+        print(f"{phi_function.__class__.__name__} 满足！")
+    else:
+        print(f"{phi_function.__class__.__name__} 不满足！")
+
+

@@ -2,43 +2,22 @@ import torch
 import torch.nn as nn
 
 
-class MultiLayerFC(nn.Module):
-    def __init__(self, input_size, hidden_sizes, output_size):
-        super(MultiLayerFC, self).__init__()
-        layers = []
 
-        # 输入层到第一个隐藏层
-        layers.append(nn.Linear(input_size, hidden_sizes[0]))
-        layers.append(nn.ReLU())
+# 创建一个 AttentionWeightedCombination 的实例
+input_size = 3  # 输入特征维度
+output_size = 3  # 输出特征维度
+attention_model = AttentionWeightedCombination(input_size, output_size)
 
-        # 隐藏层之间
-        for i in range(len(hidden_sizes) - 1):
-            layers.append(nn.Linear(hidden_sizes[i], hidden_sizes[i + 1]))
-            layers.append(nn.ReLU())
-
-        # 最后一层
-        layers.append(nn.Linear(hidden_sizes[-1], output_size))
-
-        self.fc = nn.Sequential(*layers)
-
-    def forward(self, x):
-        x = x.view(x.size(0), -1)  # 将输入展平
-        x = self.fc(x)
-        return x
-
-
-# 输入形状示例
+# 假设你有一个形状为 (batch_size, 8, 3) 的输入张量
+# 为了简化示例，这里使用随机张量代替
 batch_size = 64
-input_channels = 4
-input_rows = 32
-output_size = 256
-hidden_sizes = [512, 256, 128, 64]
-final_output_size = 3
+input_tensor = torch.randn(batch_size, 8, 3)
 
-model = MultiLayerFC(input_rows * output_size * input_channels, hidden_sizes, final_output_size)
-input_data = torch.randn(batch_size, input_rows, output_size, input_channels)
+# 通过 attention_model 处理输入数据
+output_tensor = attention_model(input_tensor)
 
-
+# 输出形状
+print(output_tensor.shape)  # 应该输出 (batch_size, 3)
 
 
 

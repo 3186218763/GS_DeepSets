@@ -5,6 +5,7 @@ matplotlib~=3.8.4
 scipy~=1.13.0
 tqdm~=4.66.2
 scipy
+torch-geometric
 torch
 scikit-learn~=1.4.2
 python-dotenv~=1.0.1

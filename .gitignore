@@ -1,5 +1,7 @@
 data/train/
 
+model_load/
+
 logs/
 # Byte-compiled / optimized / DLL files
 __pycache__/
