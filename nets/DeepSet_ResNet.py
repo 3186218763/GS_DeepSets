@@ -78,7 +78,7 @@ class ResNet_Model(nn.Module):
 
 
 class DeepSet_ResNet(nn.Module):
-    def __init__(self,deepset_hidden_size: int, deepset_out_size: int, input_size: int = 6, Debug=False):
+    def __init__(self, deepset_hidden_size: int, deepset_out_size: int, input_size: int = 6, Debug=False):
         super(DeepSet_ResNet, self).__init__()
         DeepSet = DeepSetModel(input_size=input_size,
                                output_size=deepset_out_size,

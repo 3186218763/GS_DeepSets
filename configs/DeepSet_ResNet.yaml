@@ -1,6 +1,6 @@
 model_name: DeepSet_ResNet
-batch_size: 64
-learning_rate: 3e-4
+batch_size: 16
+learning_rate: 3e-5
 epochs: 100
 Debug: False
 keep_init_real: False
@@ -13,6 +13,6 @@ padding_columns: None
 check_dataset: True
 features_len: 6
 output_size: 3
-deepset_hidden_size: 1024
-deepset_out_size: 512
+deepset_hidden_size: 2048
+deepset_out_size: 1024
 eps: 1e-7

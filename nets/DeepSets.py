@@ -230,12 +230,12 @@ class SmallPhi(nn.Module):
 
         self.dot = DotProduct(input_size=input_size, output_size=output_size)
         self.fc = FC(input_size=input_size, output_size=output_size, hidden_size=2048)
-        self.mlp = MLP(input_size=input_size, output_size=output_size, hidden_sizes=[512, 1024, 2048])
-        self.sab = SAB(input_size=input_size, nums_heads=4, output_size=output_size)
+        self.mlp = MLP(input_size=input_size, output_size=output_size, hidden_sizes=[512, 1024, 2048, 4096])
+        self.sab = SAB(input_size=input_size, nums_heads=2, output_size=output_size)
         self.conv = Conv1x1(input_size=input_size, output_size=output_size)
         self.avgpool = Pool(input_size=input_size, output_size=output_size, pool_type="avg")
         self.maxpool = Pool(input_size=input_size, output_size=output_size, pool_type="max")
-        self.encdec = EncDec(input_size=input_size, hidden_size=1024, output_size=output_size, num_heads=2)
+        self.encdec = EncDec(input_size=input_size, hidden_size=2048, output_size=output_size, num_heads=2)
 
     def forward(self, x):
         x_dot = self.dot(x)
