@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from utools.Net_Tools import Integrated_Net
+
 from nets.DeepSets import DeepSetModel
 
 
@@ -62,10 +62,12 @@ class Net_Snapshot(nn.Module):
 class DeepSet_Snapshot(nn.Module):
     def __init__(self, deepset_hidden_size: int, deepset_out_size: int, input_size: int = 6, Debug=False):
         super(DeepSet_Snapshot, self).__init__()
-        deepset = DeepSetModel(input_size=input_size, hidden_size=deepset_hidden_size,
-                               output_size=deepset_out_size, Debug=Debug)
-        snapshot = Net_Snapshot(dim_input=deepset_out_size, dim_output=3, dim_hidden=1024)
-        self.net = Integrated_Net(deepset, snapshot)
+
+        self.net = nn.Sequential(
+            DeepSetModel(input_size=input_size, hidden_size=deepset_hidden_size,
+                         output_size=deepset_out_size, Debug=Debug),
+            Net_Snapshot(dim_input=deepset_out_size, dim_output=3, dim_hidden=1024)
+        )
 
     def forward(self, x, pad_mask=None):
         if pad_mask is not None:

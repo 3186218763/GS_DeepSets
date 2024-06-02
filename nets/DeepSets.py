@@ -284,9 +284,10 @@ class DeepSetModel(nn.Module):
         super().__init__()
         self.Debug = Debug
 
-        phi = SmallPhi(input_size=input_size, output_size=hidden_size)
-        rho = SmallRho(input_size=hidden_size, output_size=output_size, mode="feature")
-        self.net = Integrated_Net(phi, rho)
+        self.net = nn.Sequential(
+            SmallPhi(input_size=input_size, output_size=hidden_size),
+            SmallRho(input_size=hidden_size, output_size=output_size, mode="feature")
+        )
 
     def forward(self, x, pad_mask=None):
         if pad_mask is not None:
@@ -302,9 +303,13 @@ class DeepSet_Only(nn.Module):
         super().__init__()
         self.Debug = Debug
 
-        phi = SmallPhi(input_size=input_size, output_size=hidden_size)
-        rho = SmallRho(input_size=hidden_size, output_size=output_size, mode="direct")
-        self.net = Integrated_Net(phi, rho)
+        self.net = nn.Sequential(
+            SmallPhi(input_size=input_size, output_size=2048),
+            SmallRho(input_size=2048, output_size=1024, mode="feature"),
+            SmallRho(input_size=1024, output_size=512, mode="feature"),
+            SmallRho(input_size=512, output_size=256, mode="feature"),
+            SmallRho(input_size=256,output_size=output_size, mode="direct")
+        )
 
     def forward(self, x, pad_mask=None):
         if pad_mask is not None:

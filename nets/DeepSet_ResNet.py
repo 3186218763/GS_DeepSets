@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from utools.Net_Tools import Integrated_Net
+
 from nets.DeepSets import DeepSetModel
 
 
@@ -80,12 +80,13 @@ class ResNet_Model(nn.Module):
 class DeepSet_ResNet(nn.Module):
     def __init__(self, deepset_hidden_size: int, deepset_out_size: int, input_size: int = 6, Debug=False):
         super(DeepSet_ResNet, self).__init__()
-        DeepSet = DeepSetModel(input_size=input_size,
-                               output_size=deepset_out_size,
-                               hidden_size=deepset_hidden_size,
-                               Debug=Debug)
-        ResNet = ResNet_Model()
-        self.DeepSet_ResNet = Integrated_Net(DeepSet, ResNet)
+        self.DeepSet_ResNet = nn.Sequential(
+            DeepSetModel(input_size=input_size,
+                         output_size=deepset_out_size,
+                         hidden_size=deepset_hidden_size,
+                         Debug=Debug),
+            ResNet_Model()
+        )
 
     def forward(self, x, pad_mask=None):
         if pad_mask is not None:

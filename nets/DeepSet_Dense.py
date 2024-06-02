@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from utools.Net_Tools import Integrated_Net
+
 from nets.DeepSets import DeepSetModel
 
 
@@ -27,10 +27,11 @@ class DeepSet_Dense(nn.Module):
         super(DeepSet_Dense, self).__init__()
         if dense_hidden is None:
             dense_hidden = [512, 256, 128, 64]
-        DeepSet = DeepSetModel(output_size=deepset_out_size, hidden_size=deepset_hidden_size, Debug=Debug)
-        input_size = 8 * deepset_out_size  # 根据前面输出的形状计算DenseModel的输入尺寸
-        Dense = DenseModel(input_size=input_size, hidden_sizes=dense_hidden)
-        self.DeepSet_Dense = Integrated_Net(DeepSet, Dense)
+
+        self.DeepSet_Dense = nn.Sequential(
+            DeepSetModel(output_size=deepset_out_size, hidden_size=deepset_hidden_size, Debug=Debug),
+            DenseModel(input_size=8 * deepset_out_size, hidden_sizes=dense_hidden),
+        )
 
     def forward(self, x, pad_mask=None):
         if pad_mask is not None:
