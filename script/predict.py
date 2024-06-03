@@ -82,6 +82,6 @@ def Predict(pre_dir, model_name, model_parameter_dir, pad_columns=None, batch_si
         real_position = _batch_sample['real_position'].to(device)
         guess_position = guess_position.cpu().numpy()
         real_position = real_position.cup().numpy()
-        
+
 
 
