@@ -286,7 +286,9 @@ class DeepSetModel(nn.Module):
 
         self.net = nn.Sequential(
             SmallPhi(input_size=input_size, output_size=hidden_size),
-            SmallRho(input_size=hidden_size, output_size=output_size, mode="feature")
+            SmallRho(input_size=hidden_size, output_size=output_size*2, mode="feature"),
+            SmallRho(input_size=output_size*2, output_size=output_size*2, mode="feature"),
+            SmallRho(input_size=output_size*2, output_size=output_size, mode="feature"),
         )
 
     def forward(self, x, pad_mask=None):
@@ -308,7 +310,7 @@ class DeepSet_Only(nn.Module):
             SmallRho(input_size=2048, output_size=1024, mode="feature"),
             SmallRho(input_size=1024, output_size=512, mode="feature"),
             SmallRho(input_size=512, output_size=256, mode="feature"),
-            SmallRho(input_size=256,output_size=output_size, mode="direct")
+            SmallRho(input_size=256, output_size=output_size, mode="direct")
         )
 
     def forward(self, x, pad_mask=None):

@@ -4,9 +4,7 @@ import os
 import pymap3d as pm
 from utools.DataSet_Tools import get_all_key_values, get_samples
 import numpy as np
-import torch
 from utools.Mylog import logger
-from sklearn.preprocessing import MinMaxScaler, StandardScaler
 
 
 class Gnss_Dataset(Dataset):
