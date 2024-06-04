@@ -150,8 +150,8 @@ if __name__ == '__main__':
     # 创建config_manager，指定模型的配置文件
 
     base_dir = "../data/train_2"
-    model_config_name = "DeepSet_Dense.yaml"
-    model_args_path = "../model_load/DeepSet_Dense/model.pt"
+    model_config_name = "DeepSet_Only.yaml"
+    model_args_path = "../model_load/DeepSet_Only/model.pt"
     configs = ConfigManager()
     configs.set_default_config(model_config_name)
     guess_positions, real_positions, init_positions = Predict(base_dir, model_args_path)

@@ -17,7 +17,7 @@ from utools.Net_Tools import gradient_hook
 from utools.DataSet_Tools import check_dataset
 from utools.ConfigManager import ConfigManager
 
-from datasets.load_dataset import collate_fa
+from datasets.load_dataset import collate_fn
 from datasets.gnss_dataset import Gnss_Dataset
 
 import numpy as np
@@ -48,7 +48,7 @@ def Train_Model(base_dir, model_config_name, model_args_path=None):
         device = torch.device("cuda")
     else:
         device = torch.device("cpu")
-    collate_feat = partial(collate_fa, padding_columns=configs.padding_columns)
+    collate_feat = partial(collate_fn, padding_columns=configs.padding_columns)
     # dataset可以设置保留features不同列，默认列顺序是pr(),prr(),los_vector(归一化后卫星到用户方向，3列),len(卫星到用户的距离)
     print("正在加载train_dataset")
     train_dirs = find_train_dirs(base_dir)
@@ -122,7 +122,6 @@ def Train_Model(base_dir, model_config_name, model_args_path=None):
 
             out = net(features, pad_mask=pad_mask)
             loss = loss_fn(out, right_correction)
-            print(out)
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
@@ -157,7 +156,7 @@ def Train_Model(base_dir, model_config_name, model_args_path=None):
 
 
 if __name__ == '__main__':
-    base_dir = "../data/train_2"
-    model_config_name = "DeepSet_Only.yaml"
+    base_dir = "../data/train_2"  # 2020-06-25-00-34-us-ca-mtv-sb-101
+    model_config_name = "DeepSet_ResNet.yaml"
     model_args_path = None
     Train_Model(base_dir, model_config_name, model_args_path)
