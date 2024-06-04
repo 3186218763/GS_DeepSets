@@ -41,24 +41,20 @@ def calc_score(llh, llh_gt):
     计算预测位置和实际位置之间的评分
     :param llh: 预测的地面位置坐标，形状为 (n, 3) 的 numpy 数组
     :param llh_gt: 实际的地面位置坐标，形状为 (n, 3) 的 numpy 数组
-    :return: 平均分数
+    :return: 全部得分
     """
     d = np.array([euclidean_distance(p, gt) for p, gt in zip(llh, llh_gt)])
-    score = np.mean([np.quantile(d, 0.50), np.quantile(d, 0.95)])
-    return score
+    return d
 
 
-def Predict(base_dir, model_config_name, model_args_path=None):
+def Predict(base_dir, model_args_path=None):
     """
     训练指定的model
     :param model_args_path: 模型参数路径
     :param base_dir: 预测的dataset的路径
-    :param model_config_name: 不需要填路径，直接填名字就可以了
     """
 
-    # 创建config_manager，指定模型的配置文件
-    configs = ConfigManager()
-    configs.set_default_config(model_config_name)
+
 
     # 确保保存模型的文件夹存在，如果不存在则创建
 
@@ -151,44 +147,50 @@ def Predict(base_dir, model_config_name, model_args_path=None):
 
 
 if __name__ == '__main__':
+    # 创建config_manager，指定模型的配置文件
+
     base_dir = "../data/train_2"
     model_config_name = "DeepSet_Dense.yaml"
     model_args_path = "../model_load/DeepSet_Dense/model.pt"
-    guess_positions, real_positions, init_positions = Predict(base_dir, model_config_name, model_args_path)
+    configs = ConfigManager()
+    configs.set_default_config(model_config_name)
+    guess_positions, real_positions, init_positions = Predict(base_dir, model_args_path)
     # 计算初始位置和预测位置的分数
-    init_score = calc_score(init_positions, real_positions)
-    guess_score = calc_score(guess_positions, real_positions)
+    init_scores = calc_score(init_positions, real_positions)
+    guess_scores = calc_score(guess_positions, real_positions)
+    time_points = range(len(init_scores))
 
-    # 打印分数
-    print(f"Initial Score: {init_score}")
-    print(f"Guess Score: {guess_score}")
+    # 创建线图
+    plt.figure(figsize=(10, 6))
+    plt.plot(time_points, init_scores, label='Initial Scores', color='blue', marker='o')
+    plt.plot(time_points, guess_scores, label='Predicted Scores', color='red', marker='x')
 
-    # 创建一个柱状图
-    labels = ['Initial', 'Guess']
-    scores = [init_score, guess_score]
+    # 添加标题和标签
+    plt.title('Comparison of Initial and Predicted Scores Over Time')
+    plt.xlabel('Time Point')
+    plt.ylabel('Score')
 
-    fig, ax = plt.subplots()
-    bar_width = 0.35
-    index = np.arange(len(labels))
+    # 添加图例
+    plt.legend()
 
-    bars = ax.bar(index, scores, bar_width, label='Score')
+    # 保存线图到文件
+    plt.savefig(f'../model_load/{configs.model_name}/score_lines.png')
 
-    # 添加标签、标题和自定义x轴刻度
-    ax.set_xlabel('Position Type')
-    ax.set_ylabel('Score')
-    ax.set_title('Comparison of Initial and Guess Position Scores')
-    ax.set_xticks(index)
-    ax.set_xticklabels(labels)
-    ax.legend()
+    # 显示线图
+    plt.show()
 
-    # 在柱状图上添加数值标签
-    for bar in bars:
-        height = bar.get_height()
-        ax.annotate('{}'.format(round(height, 2)),
-                    xy=(bar.get_x() + bar.get_width() / 2, height),
-                    xytext=(0, 3),  # 3 points vertical offset
-                    textcoords="offset points",
-                    ha='center', va='bottom')
+    # 创建平均得分的柱状图
+    plt.figure(figsize=(8, 6))
+    plt.bar(['Initial Average Score', 'Predicted Average Score'], [init_scores.mean(), guess_scores.mean()],
+            color=['blue', 'red'])
 
-    # 显示图形
+    # 添加标题和标签
+    plt.title('Comparison of Average Scores')
+    plt.xlabel('Score Type')
+    plt.ylabel('Average Score')
+
+    # 保存柱状图到文件
+    plt.savefig(f'../model_load/{configs.model_name}/score_mean.png')
+
+    # 显示柱状图
     plt.show()
