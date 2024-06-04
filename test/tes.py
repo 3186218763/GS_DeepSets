@@ -1,23 +1,15 @@
-import torch
-import torch.nn as nn
+import numpy as np
 
 
 
-# 创建一个 AttentionWeightedCombination 的实例
-input_size = 3  # 输入特征维度
-output_size = 3  # 输出特征维度
-attention_model = AttentionWeightedCombination(input_size, output_size)
+# 示例数据
+llh = np.array([[3980581.210, -111.159, 4966824.456], [4121321.562, -32259.202, 4913866.486]])  # 预测的 ECEF 坐标 (x, y, z)
+llh_gt = np.array([[3980582.210, -112.159, 4966825.456], [4121322.562, -32260.202, 4913867.486]])  # 实际的 ECEF 坐标 (x, y, z)
 
-# 假设你有一个形状为 (batch_size, 8, 3) 的输入张量
-# 为了简化示例，这里使用随机张量代替
-batch_size = 64
-input_tensor = torch.randn(batch_size, 8, 3)
+# 计算评分
+score = calc_score(llh, llh_gt)
+print(f"Score: {score}")
 
-# 通过 attention_model 处理输入数据
-output_tensor = attention_model(input_tensor)
-
-# 输出形状
-print(output_tensor.shape)  # 应该输出 (batch_size, 3)
 
 
 

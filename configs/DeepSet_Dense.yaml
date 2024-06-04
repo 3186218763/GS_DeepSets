@@ -1,9 +1,9 @@
 model_name: DeepSet_Dense
-batch_size: 64
-learning_rate: 3e-6
-epochs: 100
+batch_size: 32
+learning_rate: 3e-5
+epochs: 200
 Debug: False
-keep_init_real: False
+keep_init_real: True
 num_workers: 8
 Is_shuffle: False
 Is_drop_last: True
@@ -14,5 +14,5 @@ check_dataset: True
 deepset_hidden_size: 2048
 features_len: 6
 output_size: 3
-deepset_out_size: 64
+deepset_out_size: 1024
 eps: 1e-7

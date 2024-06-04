@@ -2,7 +2,7 @@ model_name: DeepSet_Only
 batch_size: 16
 learning_rate: 3e-5
 epochs: 100
-keep_init_real: False
+keep_init_real: True
 Debug: False
 num_workers: 8
 hidden_size: 2048
