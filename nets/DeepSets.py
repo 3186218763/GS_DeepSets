@@ -235,7 +235,7 @@ class SmallPhi(nn.Module):
         self.conv = Conv1x1(input_size=input_size, output_size=output_size)
         self.avgpool = Pool(input_size=input_size, output_size=output_size, pool_type="avg")
         self.maxpool = Pool(input_size=input_size, output_size=output_size, pool_type="max")
-        self.encdec = EncDec(input_size=input_size, hidden_size=2048, output_size=output_size, num_heads=2)
+        self.encdec = EncDec(input_size=input_size, hidden_size=2048, output_size=output_size, num_heads=1)
 
     def forward(self, x):
         x_dot = self.dot(x)
@@ -280,7 +280,7 @@ class SmallRho(nn.Module):
 
 
 class DeepSetModel(nn.Module):
-    def __init__(self, input_size: int = 6, hidden_size: int = 1024, output_size: int = 1024, Debug=False):
+    def __init__(self, input_size: int = 15, hidden_size: int = 1024, output_size: int = 1024, Debug=False):
         super().__init__()
         self.Debug = Debug
 
@@ -325,7 +325,7 @@ class DeepSet_Only(nn.Module):
 # DeepSets网络测试代码
 if __name__ == '__main__':
     torch.set_printoptions(sci_mode=False)
-    size = (64, 32, 6)
+    size = (64, 32, 15)
 
     # 创建一个shape是size的tensor
     tensor = torch.rand(size, dtype=torch.float32)
@@ -337,12 +337,12 @@ if __name__ == '__main__':
     mask[:, :2, :3] = 0
 
     # deepsets单独使用
-    model1 = DeepSet_Only(hidden_size=1024)
-    out = model1(tensor)
-    print(out.shape)
+    # model1 = DeepSet_Only(input_size=15, hidden_size=1024)
+    # out = model1(tensor)
+    # print(out.shape)
 
     # deepset混合使用
     # (64, 32, 6)
-    # net = DeepSetModel(input_size=6, output_size=512)
-    # out = net(tensor)
-    # print(out.shape)
+    net = DeepSetModel(input_size=15, output_size=512)
+    out = net(tensor)
+    print(out.shape)

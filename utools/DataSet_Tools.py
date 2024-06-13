@@ -62,12 +62,11 @@ def normalize_rng(length):
     return normalized_length
 
 
-def get_all_key_values(gnss_path, has_imv_data=False, imv_data_path=None, min_satellites=4, need_normalize=False):
+def get_all_key_values(gnss_path, imv_data_path=None, min_satellites=4, need_normalize=False):
     """
     Get all key-value pairs from a csv file.
     :param min_satellites: 要求最少从几个卫星接受数据才能进行los_vectors等等的计算，默认为4
     :param gnss_path:device_gnss.csv的路径
-    :param has_imv_data:是否使用device_imu.csv数据,默认False
     :param imv_data_path:device_imu.csv,默认None
     :return:
     """
@@ -91,7 +90,7 @@ def get_all_key_values(gnss_path, has_imv_data=False, imv_data_path=None, min_sa
     utc_list = []
 
     # 我暂时没有想到这些device的观察数据改怎么用
-    if has_imv_data:
+    if imv_data_path is not None:
         imv_df = pd.read_csv(imv_data_path)
         non_zero_value = imv_df.loc[imv_df['BiasX'] != 0.0, 'BiasX'].iloc[0]
         imv_df['BiasX'] = imv_df['BiasX'].replace(0.0, non_zero_value)
@@ -178,10 +177,10 @@ def get_all_key_values(gnss_path, has_imv_data=False, imv_data_path=None, min_sa
     return utc_list, x_wls, v_wls, key_data
 
 
-def get_samples(gnss_path, gt_path, normalize, standardize, debug, keep_init_real):
+def get_samples(gnss_path, gt_path, normalize, standardize, debug, keep_init_real, imu_path=None):
     gt_df = pd.read_csv(gt_path, low_memory=False)
     gt_utc_list = gt_df['UnixTimeMillis'].tolist()
-    utc_list, x_wls, v_wls, key_data = get_all_key_values(gnss_path)
+    utc_list, x_wls, v_wls, key_data = get_all_key_values_A(gnss_path, imu_path)
 
     not_null_rows = gt_df[gt_df[['LatitudeDegrees', 'LongitudeDegrees', 'AltitudeMeters']].notnull().all(axis=1)]
     not_null_list = not_null_rows['UnixTimeMillis'].tolist()
@@ -263,7 +262,136 @@ def check_dataset(loader):
             raise ValueError(error_msg)
 
 
+def get_all_key_values_A(gnss_path, imu_data_path=None, min_satellites=4, need_normalize=False):
+    """
+    Get all key-value pairs from a csv file.
+    :param min_satellites: 要求最少从几个卫星接受数据才能进行los_vectors等等的计算，默认为4
+    :param gnss_path:device_gnss.csv的路径
+    :param imu_data_path:device_imu.csv,默认None
+    :return:
+    """
+    gnss_df = pd.read_csv(gnss_path, low_memory=False)
+
+    CarrierFrequencyHzRef = gnss_df.groupby(['Svid', 'SignalType'])[
+        'CarrierFrequencyHz'].median()
+    gnss_df = gnss_df.merge(CarrierFrequencyHzRef, how='left', on=[
+        'Svid', 'SignalType'], suffixes=('', 'Ref'))
+    gnss_df['CarrierErrorHz'] = np.abs(
+        (gnss_df['CarrierFrequencyHz'] - gnss_df['CarrierFrequencyHzRef']))
+
+    gnss_df = carrier_smoothing(gnss_df)
+
+    utcTimeMillis = gnss_df['utcTimeMillis'].unique()
+    x0 = np.zeros(4)
+    v0 = np.zeros(4)
+    x_wls = []
+    v_wls = []
+    key_data = []
+    utc_list = []
+
+    # 我暂时没有想到这些device的观察数据改怎么用
+    if imu_data_path is not None:
+        imv_df = pd.read_csv(imu_data_path, low_memory=False)
+        non_zero_value = imv_df.loc[imv_df['BiasX'] != 0.0, 'BiasX'].iloc[0]
+        imv_df['BiasX'] = imv_df['BiasX'].replace(0.0, non_zero_value)
+        non_zero_value = imv_df.loc[imv_df['BiasY'] != 0.0, 'BiasY'].iloc[0]
+        imv_df['BiasY'] = imv_df['BiasY'].replace(0.0, non_zero_value)
+        non_zero_value = imv_df.loc[imv_df['BiasZ'] != 0.0, 'BiasZ'].iloc[0]
+        imv_df['BiasZ'] = imv_df['BiasZ'].replace(0.0, non_zero_value)
+        imv_df['X'] = imv_df['MeasurementX'] + imv_df['BiasX']
+        imv_df['Y'] = imv_df['MeasurementY'] + imv_df['BiasY']
+        imv_df['Z'] = imv_df['MeasurementZ'] + imv_df['BiasZ']
+
+        gnss_df = pd.merge(gnss_df, imv_df, on='utcTimeMillis', how='inner')
+
+    for i, (t_utc, df) in tqdm(enumerate(gnss_df.groupby('utcTimeMillis')), total=len(gnss_df.groupby('utcTimeMillis')),
+                               desc="正在从gnss_df中提前样本的体征"):
+
+        # 选择满足条件的卫星数据
+        df_pr = satellite_selection(df, 'pr_smooth', min_satellites)
+        df_prr = satellite_selection(df, 'PseudorangeRateMetersPerSecond', min_satellites)
+        if df_pr.empty or df_prr.empty:
+            print(f"不满足练条件, 第{i}组, utc={t_utc}被移除")
+
+        else:
+            # 计算 pseudorandom/pseudorange rate（距离残差和速度残差）
+            pr = (df_pr['pr_smooth'] + df_pr['SvClockBiasMeters'] - df_pr['IsrbMeters'] -
+                  df_pr['IonosphericDelayMeters'] - df_pr['TroposphericDelayMeters']).to_numpy()
+            prr = (df_prr['PseudorangeRateMetersPerSecond'] +
+                   df_prr['SvClockDriftMetersPerSecond']).to_numpy()
+
+            # 计算卫星位置，和los_vectors
+            xsat_pr = df_pr[['SvPositionXEcefMeters', 'SvPositionYEcefMeters',
+                             'SvPositionZEcefMeters']].to_numpy()
+            xsat_prr = df_prr[['SvPositionXEcefMeters', 'SvPositionYEcefMeters',
+                               'SvPositionZEcefMeters']].to_numpy()
+            vsat = df_prr[['SvVelocityXEcefMetersPerSecond', 'SvVelocityYEcefMetersPerSecond',
+                           'SvVelocityZEcefMetersPerSecond']].to_numpy()
+
+            #  peseudorange/pseudorange rate的权重矩阵
+            Wx = np.diag(1 / df_pr['RawPseudorangeUncertaintyMeters'].to_numpy())
+            Wv = np.diag(1 / df_prr['PseudorangeRateUncertaintyMetersPerSecond'].to_numpy())
+
+            # 计算的wls初始值
+            if len(pr) >= min_satellites:
+                # Normal WLS
+                if np.all(x0 == 0):
+                    opt = optimize.least_squares(
+                        pr_residuals, x0, jac_pr_residuals, args=(xsat_pr, pr, Wx))
+                    x0 = opt.x
+
+                opt = optimize.least_squares(
+                    pr_residuals, x0, jac_pr_residuals, args=(xsat_pr, pr, Wx), loss='soft_l1')
+                if opt.status < 1 or opt.status == 2:
+                    print(f'i = {i} position lsq status = {opt.status}')
+                    print(f"不满足练条件, 第{i}组, utc={t_utc}被移除")
+                    continue
+                else:
+                    x_wls.append(opt.x[:3])
+                    x0 = opt.x
+
+            if len(prr) >= min_satellites:
+                if np.all(v0 == 0):
+                    opt = optimize.least_squares(
+                        prr_residuals, v0, jac_prr_residuals, args=(vsat, prr, x0, xsat_prr, Wv))
+                    v0 = opt.x
+
+                opt = optimize.least_squares(
+                    prr_residuals, v0, jac_prr_residuals, args=(vsat, prr, x0, xsat_prr, Wv), loss='soft_l1')
+                if opt.status < 1:
+                    print(f'i = {i} velocity lsq status = {opt.status}')
+                    print(f"不满足练条件, 第{i}组, utc={t_utc}被移除")
+                    continue
+                else:
+                    v_wls.append(opt.x[:3])
+                    v0 = opt.x
+                residuals_prr = prr_residuals(v0, vsat, prr, x0, xsat_prr, Wv)
+                residuals_pr = (pr_residuals(x0, xsat_pr, pr, Wx))
+
+                device_offset = np.hstack((df_pr['X'].to_numpy().reshape(-1, 1), df_pr['Y'].to_numpy().reshape(-1, 1),
+                                           df_pr['Z'].to_numpy().reshape(-1, 1)))
+
+                accumulate = np.hstack((df_pr['AccumulatedDeltaRangeState'].to_numpy().reshape(-1, 1),
+                                        df_pr['AccumulatedDeltaRangeMeters'].to_numpy().reshape(-1, 1),
+                                        df_pr['AccumulatedDeltaRangeState'].to_numpy().reshape(-1, 1)))
+                bais = np.hstack((df_pr['BiasNanos'].to_numpy().reshape(-1, 1),
+                                  df_pr['DriftUncertaintyNanosPerSecond'].to_numpy().reshape(-1, 1),
+                                  df_pr['DriftNanosPerSecond'].to_numpy().reshape(-1, 1)))
+
+                combined_residuals = np.hstack((residuals_pr.reshape(-1, 1), residuals_prr.reshape(-1, 1)))
+                u, rng = los_vector(x0[:3], xsat_prr)
+                los_vecs = np.concatenate((u, rng.reshape(-1, 1)), axis=1)
+                key_values = np.hstack((combined_residuals, los_vecs, device_offset, accumulate, bais))
+                key_data.append(key_values)
+                utc_list.append(t_utc)
+
+    return utc_list, x_wls, v_wls, key_data
 
 
-
+if __name__ == '__main__':
+    gnss_path = "../data/train/2020-08-04-00-20-us-ca-sb-mtv-101/pixel5/device_gnss.csv"
+    gt_path = "../data/train/2020-08-04-00-20-us-ca-sb-mtv-101/pixel5/ground_truth.csv"
+    imu_path = "../data/train/2020-08-04-00-20-us-ca-sb-mtv-101/pixel5/device_imu.csv"
+    data_len, samples = get_samples(gnss_path=gnss_path, gt_path=gt_path, normalize=False, standardize=False, debug=False, keep_init_real=False, imu_path=imu_path)
+    print(samples[1]['features'].shape)
 

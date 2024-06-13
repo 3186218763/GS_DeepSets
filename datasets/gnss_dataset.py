@@ -23,8 +23,9 @@ class Gnss_Dataset(Dataset):
 
         gt_path = os.path.join(target_dir, 'ground_truth.csv')
         gnss_path = os.path.join(target_dir, 'device_gnss.csv')
+        imu_path = os.path.join(target_dir, 'device_imu.csv')
 
-        self.data_len, self.samples = get_samples(gnss_path, gt_path, normalize, standardize, debug, keep_init_real)
+        self.data_len, self.samples = get_samples(gnss_path=gnss_path, imu_path=imu_path, gt_path=gt_path, normalize=normalize, standardize=standardize, debug=debug, keep_init_real=keep_init_real)
 
     def __len__(self):
         return self.data_len

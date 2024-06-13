@@ -7,6 +7,7 @@ from datasets.gnss_dataset import Gnss_Dataset
 from nets.DeepSets import DeepSet_Only
 from functools import partial
 from utools.Mylog import logger
+from utools.DataSet_Tools import check_dataset
 
 torch.set_printoptions(precision=8, sci_mode=False)
 
@@ -106,11 +107,11 @@ collate_feat = partial(collate_fa)
 
 if __name__ == '__main__':
 
-    train_dir2 = "../data/train/2020-07-17-23-13-us-ca-sf-mtv-280/pixel4"
-    dataset2 = Gnss_Dataset(train_dir2)
+    train_dir = "../data/train/2020-08-04-00-20-us-ca-sb-mtv-101/pixel5"
+    dataset2 = Gnss_Dataset(train_dir, keep_init_real=True)
 
-    loader = DataLoader(dataset2, batch_size=16, shuffle=True, collate_fn=collate_feat)
-
+    loader = DataLoader(dataset2, batch_size=16, collate_fn=collate_feat)
+    check_dataset(loader)
     for i, batch_sample in enumerate(loader):
         _batch_sample, pad_mask = batch_sample
         features = _batch_sample['features']

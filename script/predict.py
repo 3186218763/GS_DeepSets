@@ -149,9 +149,10 @@ def Predict(base_dir, model_args_path=None):
 if __name__ == '__main__':
     # 创建config_manager，指定模型的配置文件
 
-    base_dir = "../data/train_2"
-    model_config_name = "DeepSet_ResNet.yaml"
-    model_args_path = "../model_load/DeepSet_ResNet/model.pt"
+    base_dir = "../data/train"
+    model = "DeepSet_Dense"
+    model_config_name = f"{model}.yaml"
+    model_args_path = f"../model_load/{model}/model.pt"
     configs = ConfigManager()
     configs.set_default_config(model_config_name)
     guess_positions, real_positions, init_positions = Predict(base_dir, model_args_path)
