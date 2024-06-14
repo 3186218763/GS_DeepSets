@@ -9,8 +9,8 @@ from torch.optim.lr_scheduler import StepLR
 
 from nets.DeepSets import DeepSet_Only
 from nets.DeepSet_Dense import DeepSet_Dense
-from nets.DeepSet_ResNet import DeepSet_ResNet
 from nets.DeepSet_Snapshot import DeepSet_Snapshot
+from nets.DeepSet_Equivariant import DeepSet_Equivariant
 
 from utools.Train_Tools import find_train_dirs
 from utools.Net_Tools import gradient_hook
@@ -80,18 +80,17 @@ def Train_Model(base_dir, model_config_name, model_args_path=None):
                             deepset_out_size=configs.deepset_out_size,
                             Debug=configs.Debug)
 
-    elif configs.model_name == "DeepSet_ResNet":
-        net = DeepSet_ResNet(input_size=configs.features_len,
-                             deepset_hidden_size=configs.deepset_hidden_size,
-                             deepset_out_size=configs.deepset_out_size,
-                             Debug=configs.Debug)
-
     elif configs.model_name == "DeepSet_Snapshot":
         net = DeepSet_Snapshot(input_size=configs.features_len,
                                deepset_hidden_size=configs.deepset_hidden_size,
                                deepset_out_size=configs.deepset_out_size,
                                Debug=configs.Debug)
 
+    elif configs.model_name == "DeepSet_Equivariant":
+        net = DeepSet_Equivariant(input_size=configs.features_len,
+                       deepset_hidden_size=configs.deepset_hidden_size,
+                       deepset_out_size=configs.deepset_out_size,
+                       Debug=configs.Debug)
     else:
         raise ValueError("没有此模型，请查看可用的模型配置")
 
@@ -157,6 +156,6 @@ def Train_Model(base_dir, model_config_name, model_args_path=None):
 
 if __name__ == '__main__':
     base_dir = "../data/train"
-    model_config_name = "DeepSet_Snapshot.yaml"
+    model_config_name = "DeepSet_Equivariant.yaml"
     model_args_path = None
     Train_Model(base_dir, model_config_name, model_args_path)

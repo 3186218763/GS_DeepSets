@@ -9,7 +9,6 @@ from torch.optim.lr_scheduler import StepLR
 
 from nets.DeepSets import DeepSet_Only
 from nets.DeepSet_Dense import DeepSet_Dense
-from nets.DeepSet_ResNet import DeepSet_ResNet
 from nets.DeepSet_Snapshot import DeepSet_Snapshot
 
 from utools.Train_Tools import find_train_dirs
@@ -92,11 +91,6 @@ def Predict(base_dir, model_args_path=None):
                             deepset_out_size=configs.deepset_out_size,
                             Debug=configs.Debug)
 
-    elif configs.model_name == "DeepSet_ResNet":
-        net = DeepSet_ResNet(input_size=configs.features_len,
-                             deepset_hidden_size=configs.deepset_hidden_size,
-                             deepset_out_size=configs.deepset_out_size,
-                             Debug=configs.Debug)
 
     elif configs.model_name == "DeepSet_Snapshot":
         net = DeepSet_Snapshot(input_size=configs.features_len,
@@ -153,7 +147,7 @@ def plot_and_save_direction_bar(index, direction, init_positions, real_positions
     plt.bar(['Initial', 'Corrected (Guess)'], [init_error, guess_error], color=[init_color, guess_color])
 
     plt.xlabel('Position Type')
-    plt.ylabel(f'{direction}')
+    plt.ylabel(f'Error: (m)')
     plt.title(f'{direction}-Direction Average Distance Error Comparison')
 
     # Save the figure
@@ -171,7 +165,7 @@ def plot_and_save_direction_line(index, direction, init_positions, real_position
     plt.plot(indices, guess_positions[index] - real_positions[index], color=guess_color, label='Corrected (Guess)')
 
     plt.xlabel('Point Index')
-    plt.ylabel(f'{direction}')
+    plt.ylabel(f'Average Score')
     plt.title(f'{direction}-Direction Position Comparison')
     plt.legend()
 

@@ -1,53 +1,59 @@
-import numpy as np
-import matplotlib.pyplot as plt
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 
-# 加载数据
-init_positions = np.load('../npy/init_positions.npy')
-real_positions = np.load('../npy/real_positions.npy')
-guess_positions = np.load('../npy/guess_positions.npy')
 
-# 提取坐标（仅XY平面）
-init_x, init_y = init_positions[:, 0], init_positions[:, 1]
-real_x, real_y = real_positions[:, 0], real_positions[:, 1]
-guess_x, guess_y = guess_positions[:, 0], guess_positions[:, 1]
+class DSEN(nn.Module):
+    def __init__(self, input_dim, hidden_dim, output_dim):
+        super(DSEN, self).__init__()
+        # 定义输入层、隐藏层和输出层
+        self.input_layer = nn.Linear(input_dim, hidden_dim)
+        self.hidden_layer = nn.Linear(hidden_dim, hidden_dim)
+        self.output_layer = nn.Linear(hidden_dim * 2, output_dim)  # 输出层输入为 hidden_dim * 2
 
-# 更大的缩放比例因子（拉大距离）
-scale_factor = 100.0
+        # 定义对称操作：全局求和和求平均
+        self.global_pool = nn.AdaptiveAvgPool1d(1)
 
-# 缩放坐标
-init_x *= scale_factor
-init_y *= scale_factor
+    def forward(self, x):
+        # x 的形状为 (batch_size, 8, 1024)
 
-real_x *= scale_factor
-real_y *= scale_factor
+        # 输入层变换
+        x = F.relu(self.input_layer(x))  # 输出形状 (batch_size, 8, hidden_dim)
 
-guess_x *= scale_factor
-guess_y *= scale_factor
+        # 隐藏层变换
+        x = F.relu(self.hidden_layer(x))  # 输出形状 (batch_size, 8, hidden_dim)
 
-# 创建图形
-plt.figure(figsize=(12, 10))  # 增加图形尺寸
+        # 对称操作
+        x_sum = x.sum(dim=1)  # 对第二维求和，形状变为 (batch_size, hidden_dim)
+        x_avg = self.global_pool(x.permute(0, 2, 1)).squeeze(-1)  # 对第二维求平均，形状变为 (batch_size, hidden_dim)
 
-# 绘制散点图，设置透明度
-plt.scatter(init_x, init_y, c='green', s=5, alpha=0.5, label='Initial Positions')  # alpha参数控制透明度
-plt.scatter(real_x, real_y, c='red', s=5, alpha=0.5, label='Real Positions')
-plt.scatter(guess_x, guess_y, c='blue', s=5, alpha=0.5, label='Guess Positions')
+        # 将求和和求平均的结果拼接
+        x = torch.cat([x_sum, x_avg], dim=-1)  # 拼接后形状为 (batch_size, hidden_dim * 2)
 
-# 设置标签
-plt.xlabel('X (m)')
-plt.ylabel('Y (m)')
-plt.title('ECEF Positions')
+        # 输出层变换
+        x = self.output_layer(x)  # 输出形状 (batch_size, output_dim)
 
-# 设置相同的比例
-plt.gca().set_aspect('equal', adjustable='box')
+        return x
 
-# 显示图例
-plt.legend()
 
-# 保存图形到文件
-plt.savefig('ecef_positions.png')
+# 定义模型参数
+input_dim = 1024
+hidden_dim = 512
+output_dim = 3
 
-# 显示图形
-plt.show()
+# 初始化模型
+model = DSEN(input_dim, hidden_dim, output_dim)
+
+# 创建一个示例输入
+batch_size = 32
+x = torch.randn(batch_size, 8, 1024)
+
+# 前向传播
+output = model(x)
+
+# 输出结果
+print(output.shape)  # 应输出 (batch_size, output_dim)
+
 
 
 
