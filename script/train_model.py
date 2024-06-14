@@ -156,7 +156,7 @@ def Train_Model(base_dir, model_config_name, model_args_path=None):
 
 
 if __name__ == '__main__':
-    base_dir = "../data/train"  # 2020-06-25-00-34-us-ca-mtv-sb-101
-    model_config_name = "DeepSet_Dense.yaml"
+    base_dir = "../data/train"
+    model_config_name = "DeepSet_Snapshot.yaml"
     model_args_path = None
     Train_Model(base_dir, model_config_name, model_args_path)

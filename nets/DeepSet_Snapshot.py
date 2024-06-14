@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 
+from utools.Net_Tools import check_phi_permutation_invariance
 from nets.DeepSets import DeepSetModel
 
 
@@ -77,8 +78,9 @@ class DeepSet_Snapshot(nn.Module):
 
 
 if __name__ == '__main__':
-    size = (64, 32, 6)
+    size = (64, 32, 15)
     tensor = torch.rand(size, dtype=torch.float32)
-    model = DeepSet_Snapshot(input_size=6, deepset_out_size=64, deepset_hidden_size=64)
+    model = DeepSet_Snapshot(input_size=15, deepset_out_size=64, deepset_hidden_size=64)
+    check_phi_permutation_invariance(model)
     out = model(tensor)
     print(out.shape)

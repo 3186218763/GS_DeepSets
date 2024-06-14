@@ -22,7 +22,7 @@ class Integrated_Net(nn.Module):
         return out
 
 
-def check_phi_permutation_invariance(phi_function, input_size=6):
+def check_phi_permutation_invariance(phi_function, input_size=15):
     """
     phi函数必须满足置换不变
     """

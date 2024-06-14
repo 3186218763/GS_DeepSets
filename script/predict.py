@@ -54,8 +54,6 @@ def Predict(base_dir, model_args_path=None):
     :param base_dir: 预测的dataset的路径
     """
 
-
-
     # 确保保存模型的文件夹存在，如果不存在则创建
 
     if torch.cuda.is_available():
@@ -137,7 +135,6 @@ def Predict(base_dir, model_args_path=None):
         real_positions.append(real_position.cpu().detach())
         init_positions.append(init_position.cpu().detach())
 
-
         # 将列表中的张量拼接为一个张量
     guess_positions = torch.cat(guess_positions).numpy()
     real_positions = torch.cat(real_positions).numpy()
@@ -146,25 +143,67 @@ def Predict(base_dir, model_args_path=None):
     return guess_positions, real_positions, init_positions
 
 
+def plot_and_save_direction_bar(index, direction, init_positions, real_positions, guess_positions):
+    # Calculate average errors
+    init_error = np.mean(np.abs(init_positions[index] - real_positions[index]))
+    guess_error = np.mean(np.abs(guess_positions[index] - real_positions[index]))
+
+    # Plotting
+    plt.figure(figsize=(10, 5))
+    plt.bar(['Initial', 'Corrected (Guess)'], [init_error, guess_error], color=[init_color, guess_color])
+
+    plt.xlabel('Position Type')
+    plt.ylabel(f'{direction}')
+    plt.title(f'{direction}-Direction Average Distance Error Comparison')
+
+    # Save the figure
+    plt.savefig(f'../model_load/{configs.model_name}/{direction}_bar.png')
+
+    # Show the figure
+    plt.show()
+
+
+def plot_and_save_direction_line(index, direction, init_positions, real_positions, guess_positions):
+    indices = np.arange(n)
+
+    plt.figure(figsize=(10, 5))
+    plt.plot(indices, init_positions[index] - real_positions[index], color=init_color, label='Initial')
+    plt.plot(indices, guess_positions[index] - real_positions[index], color=guess_color, label='Corrected (Guess)')
+
+    plt.xlabel('Point Index')
+    plt.ylabel(f'{direction}')
+    plt.title(f'{direction}-Direction Position Comparison')
+    plt.legend()
+
+    # Save the figure
+    plt.savefig(f'../model_load/{configs.model_name}/{direction}_direction_line.png')
+
+    # Show the figure
+    plt.show()
+
+
 if __name__ == '__main__':
     # 创建config_manager，指定模型的配置文件
 
     base_dir = "../data/train"
-    model = "DeepSet_Dense"
+    model = "DeepSet_Snapshot"
     model_config_name = f"{model}.yaml"
     model_args_path = f"../model_load/{model}/model.pt"
     configs = ConfigManager()
     configs.set_default_config(model_config_name)
     guess_positions, real_positions, init_positions = Predict(base_dir, model_args_path)
+    init_color = 'green'
+    guess_color = 'blue'
+    real_color = 'red'
     # 计算初始位置和预测位置的分数
     init_scores = calc_score(init_positions, real_positions)
     guess_scores = calc_score(guess_positions, real_positions)
     time_points = range(len(init_scores))
-
+    n = init_positions.shape[1]
     # 创建线图
     plt.figure(figsize=(10, 6))
-    plt.plot(time_points, init_scores, label='Initial Scores', color='blue', marker='o')
-    plt.plot(time_points, guess_scores, label='Predicted Scores', color='red', marker='x')
+    plt.plot(time_points, init_scores, label='Initial Scores', color=init_color, marker='o')
+    plt.plot(time_points, guess_scores, label='Predicted Scores', color=guess_color, marker='x')
 
     # 添加标题和标签
     plt.title('Comparison of Initial and Predicted Scores Over Time')
@@ -180,18 +219,30 @@ if __name__ == '__main__':
     # 显示线图
     plt.show()
 
-    # 创建平均得分的柱状图
+    # 创建柱状图
     plt.figure(figsize=(8, 6))
-    plt.bar(['Initial Average Score', 'Predicted Average Score'], [init_scores.mean(), guess_scores.mean()],
-            color=['blue', 'red'])
+    bars = plt.bar(['Initial Average Score', 'Predicted Average Score'],
+                   [init_scores.mean(), guess_scores.mean()],
+                   color=[init_color, guess_color])
 
     # 添加标题和标签
     plt.title('Comparison of Average Scores')
     plt.xlabel('Score Type')
     plt.ylabel('Average Score')
 
+    # 在右上角添加柱状图的大小标注
+    for bar in bars:
+        height = bar.get_height()
+        plt.text(bar.get_x() + bar.get_width() / 2.0, height, f'{height:.2f}',
+                 ha='center', va='bottom')
+
     # 保存柱状图到文件
     plt.savefig(f'../model_load/{configs.model_name}/score_mean.png')
 
     # 显示柱状图
     plt.show()
+    directions = ['X', 'Y', 'Z']
+    # Plot and save each direction separately
+    for i, direction in enumerate(directions):
+        plot_and_save_direction_bar(i, direction, init_positions, real_positions, guess_positions)
+        plot_and_save_direction_line(i, direction, init_positions, real_positions, guess_positions)

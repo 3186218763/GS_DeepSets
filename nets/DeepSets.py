@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 
 from utools.Mylog import logger
-from utools.Net_Tools import Integrated_Net
+from utools.Net_Tools import check_phi_permutation_invariance
 
 torch.backends.cudnn.enabled = False
 
@@ -337,12 +337,13 @@ if __name__ == '__main__':
     mask[:, :2, :3] = 0
 
     # deepsets单独使用
-    # model1 = DeepSet_Only(input_size=15, hidden_size=1024)
-    # out = model1(tensor)
-    # print(out.shape)
+    model1 = DeepSet_Only(input_size=15, hidden_size=1024)
+    check_phi_permutation_invariance(model1)
+    out = model1(tensor)
+    print(out.shape)
 
     # deepset混合使用
-    # (64, 32, 6)
-    net = DeepSetModel(input_size=15, output_size=512)
-    out = net(tensor)
-    print(out.shape)
+    # (64, 32, 15)
+    # net = DeepSetModel(input_size=15, output_size=512)
+    # out = net(tensor)
+    # print(out.shape)
