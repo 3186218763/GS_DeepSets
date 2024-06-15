@@ -155,7 +155,7 @@ def Train_Model(base_dir, model_config_name, model_args_path=None):
 
 
 if __name__ == '__main__':
-    base_dir = "../data/train"
-    model_config_name = "DeepSet_Equivariant.yaml"
-    model_args_path = None
+    base_dir = "../data/test"
+    model_config_name = "DeepSet_Snapshot.yaml"
+    model_args_path = "../model_load/DeepSet_Snapshot/model.pt"
     Train_Model(base_dir, model_config_name, model_args_path)

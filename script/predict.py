@@ -179,7 +179,7 @@ def plot_and_save_direction_line(index, direction, init_positions, real_position
 if __name__ == '__main__':
     # 创建config_manager，指定模型的配置文件
 
-    base_dir = "../data/train"
+    base_dir = "../data/test"
     model = "DeepSet_Snapshot"
     model_config_name = f"{model}.yaml"
     model_args_path = f"../model_load/{model}/model.pt"

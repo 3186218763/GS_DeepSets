@@ -1,7 +1,7 @@
 model_name: DeepSet_Snapshot
 batch_size: 16
 learning_rate: 3e-5
-epochs: 100
+epochs: 50
 Debug: False
 keep_init_real: True
 num_workers: 8
