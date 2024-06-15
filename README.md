@@ -46,7 +46,7 @@ GS_DeepSets
 
 ## 数据来源
 我们的数据来源与Google Smartphone Decimeter Challenge 2023-2024。如果你想要下载数据，
-[点击这里](https://www.kaggle.com/competitions/smartphone-decimeter-2023/data) 进入Kaggle下载，下载后根据代码结构轻微调整放入项目即可。 如果需要已经训练好的参数, 这里提供了DeepSet_Snapshot）[点击这里](链接：https://pan.baidu.com/s/1dkGGK6HpZ7TarFwwlJTkeA?pwd=rsn5)
+[点击这里](https://www.kaggle.com/competitions/smartphone-decimeter-2023/data) 进入Kaggle下载，下载后根据代码结构轻微调整放入项目即可。 如果需要已经训练好的参数, 这里提供了DeepSet_Snapshot）[点击这里](https://pan.baidu.com/s/1dkGGK6HpZ7TarFwwlJTkeA?pwd=rsn5)
 提取码：rsn5
 
 ## 注意事项
